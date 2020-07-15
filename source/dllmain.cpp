@@ -13,7 +13,8 @@ DWORD GetFilePointer(HANDLE hFile)
 HANDLE __stdcall CreateFile_hook(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes,
 	DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
-	return  CreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, hTemplateFile);;
+	dwFlagsAndAttributes ^= FILE_FLAG_OVERLAPPED;
+	return  CreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);;
 }
 
 
@@ -33,9 +34,12 @@ BOOL __stdcall ReadFile_hook(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytes
 
 void Init()
 {
-
-	Patch<int>(0x81B37C, (int)CreateFile_hook);
-	Patch<int>(0x81B374, (int)ReadFile_hook);
+	Nop(0x45A0B3, 6);
+	InjectHook(0x45A0B3, CreateFile_hook, PATCH_CALL);
+	Nop(0x45A24B, 6);
+	InjectHook(0x45A24B, ReadFile_hook, PATCH_CALL);
+	Nop(0x45A2FE, 6);
+	InjectHook(0x45A2FE, ReadFile_hook, PATCH_CALL);
 }
 
 BOOL APIENTRY DllMain( HMODULE hModule,
