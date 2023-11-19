@@ -90,10 +90,40 @@ SECONDPART:
 
 
 
+struct ADPCMDATA;
+
+typedef void (*fnDecodeADPCM_MONO_t)(void *out, void const *in, int out_len, int in_len, ADPCMDATA *adpcm_data);
+
+fnDecodeADPCM_MONO_t fnDecodeADPCM_MONO = NULL;
+
+void DecodeADPCM_MONO(void *out, void const *in, int out_len, int in_len, ADPCMDATA *adpcm_data)
+{
+    __try
+    {
+        fnDecodeADPCM_MONO(out, in, out_len, in_len, adpcm_data);
+    }
+    __except ((GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION) ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+    { }
+}
+
 void Init()
 {
 	Patch<int>(0x81B374, (int)ReadFile_hook);
 	Patch<int>(0x673F30, (int)Movies_hook);
+	
+    // Unhandled exception at 0x2114036A (mss32.dll) in manhunt.exe.20191006175924.dmp: 0xC0000005: Access violation reading location 0x211C1379.
+	// https://github.com/ThirteenAG
+    
+	HMODULE mss32 = GetModuleHandle("mss32");
+	if ( mss32 )
+	{		
+		fnDecodeADPCM_MONO = (fnDecodeADPCM_MONO_t)((DWORD)mss32 + 0x402EB);
+		
+		InjectHook((DWORD)mss32 + 0x091D6, DecodeADPCM_MONO);
+		InjectHook((DWORD)mss32 + 0x0AF56, DecodeADPCM_MONO);
+		InjectHook((DWORD)mss32 + 0x2A3C2, DecodeADPCM_MONO);
+		InjectHook((DWORD)mss32 + 0x2BFFE, DecodeADPCM_MONO);
+	}
 }
 
 BOOL APIENTRY DllMain( HMODULE hModule,
